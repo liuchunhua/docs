@@ -228,3 +228,16 @@ public @interface Transactional {
 }
 #+END_SRC
 *** 事务传播
++ REQUIRED
+  propagation值为Propagation.REQUIRED,Spring在事务方法上创建一个逻辑事务,每一个逻辑事务可以决定自己的回滚状态,
+外部逻辑事务与内部逻辑事务是独立的,但这些逻辑事务最终会映射到物理事务上.当内部逻辑事务设置回滚,外部逻辑事务不想回滚,
+这是会抛出UnexpectedRollbackException.所以如果内部事务设置了回滚,外部事务依然可以提交,外部调用者需要收到UnexpectedRollbackException
+进行回滚.
++ REQUIRES_NEW
+  与REQUIRED相比,使用完全独立的物理事务,内外事务不会相互影响,内部事务回滚不会影响外部事务提交.
++ NESTED
+使用一个独立的物理事务和回滚点,内部事务可以进行回滚,对于物理事务只是回滚到某个回滚点,可以继续执行事务.
+** 可编程事务
+Spring提供两个类:
++ TransactionTemplate
++ PlatformTransactionManager
