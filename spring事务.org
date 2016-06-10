@@ -1,4 +1,230 @@
-* Transaction Managament
+* Transaction Management(springframework手册http://docs.spring.io/spring/docs/current/spring-framework-reference/htmlsingle/#transaction-strategies)
 ** Spring框架提供了一致的事务管理
 + 一致的编程模型覆盖了不同的事务API,如JTA(Java Transaction API),JDBC,Hibernate,JPA(Java Persistent API), JDO(Java Data Objects)
++ 支持声明式(declarative transaction management)和可编程事务管理(programmatic transaction management)
++ 
+** Spring框架支持事务模型
+java EE开发者在事务管理上有两种选择:全局(global)和本地(local)事务(??),两种都有巨大限制
+*** 全局事务
+可管理多种事务资源,关系数据库和消息队列.JTA需要依赖JNDI
+*** 本地事务 
+针对特定资源,如JDBC连接事务.缺点是无法与其他类型事务工作,侵入式的.
+*** 一致编程模型
+It enables application developers to use a consistent programming model in any environment. 
+You write your code once, and it can benefit from different transaction management strategies in different environments.
+** 理解事务抽象
+Spring事务抽象的关键是事务策略(transaction strategy),事务策略由=org.springframework.transaction.PlatformTransactionManager=定义.
+#+BEGIN_SRC java
+package org.springframework.transaction;
 
+/**
+ * This is the central interface in Spring's transaction infrastructure.
+ * Applications can use this directly, but it is not primarily meant as API:
+ * Typically, applications will work with either TransactionTemplate or
+ * declarative transaction demarcation through AOP.
+ *
+ */
+public interface PlatformTransactionManager {
+
+	/**
+	 * Return a currently active transaction or create a new one, according to
+	 * the specified propagation behavior.
+	 */
+	TransactionStatus getTransaction(TransactionDefinition definition) throws TransactionException;
+
+	/**
+	 * Commit the given transaction, with regard to its status. If the transaction
+	 * has been marked rollback-only programmatically, perform a rollback.
+	 */
+	void commit(TransactionStatus status) throws TransactionException;
+
+	/**
+	 * Perform a rollback of the given transaction.
+	 */
+	void rollback(TransactionStatus status) throws TransactionException;
+
+}
+
+#+END_SRC
+ 
+TransactionDefinition接口
+- 隔离 事务与其他事务的隔离程度
+- 传播 事务嵌套事务,新事务与存在事务相处方式.
+- 超时 事务超时多长时间回滚
+- 只读状态
+
+TransactionStatus接口
+#+BEGIN_SRC java
+package org.springframework.transaction;
+
+import java.io.Flushable;
+
+/**
+ * Representation of the status of a transaction.
+ *
+ */
+public interface TransactionStatus extends SavepointManager, Flushable {
+
+	/**
+	 * Return whether the present transaction is new (else participating
+	 * in an existing transaction, or potentially not running in an
+	 * actual transaction in the first place).
+	 */
+	boolean isNewTransaction();
+
+	/**
+	 * Return whether this transaction internally carries a savepoint,
+	 * that is, has been created as nested transaction based on a savepoint.
+	 */
+	boolean hasSavepoint();
+
+	/**
+	 * Set the transaction rollback-only. This instructs the transaction manager
+	 * that the only possible outcome of the transaction may be a rollback, as
+	 * alternative to throwing an exception which would in turn trigger a rollback.
+	 */
+	void setRollbackOnly();
+
+	/**
+	 * Return whether the transaction has been marked as rollback-only
+	 * (either by the application or by the transaction infrastructure).
+	 */
+	boolean isRollbackOnly();
+
+	/**
+	 * Flush the underlying session to the datastore, if applicable:
+	 * for example, all affected Hibernate/JPA sessions.
+	 */
+	@Override
+	void flush();
+
+	/**
+	 * Return whether this transaction is completed, that is,
+	 * whether it has already been committed or rolled back.
+	 */
+	boolean isCompleted();
+
+}
+#+END_SRC
+
+PlatformTransactionManager的接口实现.
+#+BEGIN_SRC xml
+<!-- implementation for a single JDBC {@link javax.sql.DataSource}-->
+<bean id="txManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+    <property name="dataSource" ref="dataSource"/>
+</bean>
+
+<!--implementation
+ * for JTA, delegating to a backend JTA provider. This is typically used to delegate
+ * to a Java EE server's transaction coordinator, but may also be configured with a
+ * local JTA provider which is embedded within the application.
+-->
+<bean id="txManager" class="org.springframework.transaction.jta.JtaTransactionManager" />
+
+<bean id="txManager" class="org.springframework.orm.hibernate5.HibernateTransactionManager">
+    <property name="sessionFactory" ref="sessionFactory"/>
+#+END_SRC
+** 事务同步
+*** 高级方式
+使用Spring的模板类,JdbcTemplate, 
+*** 低级方式
+使用工具类,DataSourceUtils (for JDBC), EntityManagerFactoryUtils (for JPA), SessionFactoryUtils (for Hibernate), PersistenceManagerFactoryUtils (for JDO)
+#+BEGIN_SRC java
+	public static Connection doGetConnection(DataSource dataSource) throws SQLException {
+		Assert.notNull(dataSource, "No DataSource specified");
+
+		ConnectionHolder conHolder = (ConnectionHolder) TransactionSynchronizationManager.getResource(dataSource);
+    //已有连接并且是同步事务管理,直接返回连接实例
+		if (conHolder != null && (conHolder.hasConnection() || conHolder.isSynchronizedWithTransaction())) {
+			conHolder.requested();
+			if (!conHolder.hasConnection()) {
+				logger.debug("Fetching resumed JDBC Connection from DataSource");
+				conHolder.setConnection(dataSource.getConnection());
+			}
+			return conHolder.getConnection();
+		}
+		// Else we either got no holder or an empty thread-bound holder here.
+
+		logger.debug("Fetching JDBC Connection from DataSource");
+		Connection con = dataSource.getConnection();
+
+		if (TransactionSynchronizationManager.isSynchronizationActive()) {
+			logger.debug("Registering transaction synchronization for JDBC Connection");
+			// Use same Connection for further JDBC actions within the transaction.
+			// Thread-bound object will get removed by synchronization at transaction completion.
+			ConnectionHolder holderToUse = conHolder;
+			if (holderToUse == null) {
+				holderToUse = new ConnectionHolder(con);
+			}
+			else {
+				holderToUse.setConnection(con);
+			}
+			holderToUse.requested();
+			TransactionSynchronizationManager.registerSynchronization(
+					new ConnectionSynchronization(holderToUse, dataSource));
+			holderToUse.setSynchronizedWithTransaction(true);
+			if (holderToUse != conHolder) {
+				TransactionSynchronizationManager.bindResource(dataSource, holderToUse);
+			}
+		}
+
+		return con;
+	}
+
+#+END_SRC
+** 声明式事务管理
+实现借助AOP Proxies,元数据．AOP加事务元数据产生一个AOP代理,使用TransactionInterceptor和PlatformTransactionManager实现方法调用纳入事务中.
+#+BEGIN_SRC xml
+ <!-- the transactional advice (what 'happens'; see the <aop:advisor/> bean below) -->
+    <tx:advice id="txAdvice" transaction-manager="txManager">
+        <!-- the transactional semantics... -->
+        <tx:attributes>
+            <!-- all methods starting with 'get' are read-only -->
+            <tx:method name="get*" read-only="true"/>
+            <!-- other methods use the default transaction settings (see below) -->
+            <tx:method name="*"/>
+        </tx:attributes>
+    </tx:advice>
+
+    <!-- ensure that the above transactional advice runs for any execution
+        of an operation defined by the FooService interface -->
+    <aop:config>
+        <aop:pointcut id="fooServiceOperation" expression="execution(* x.y.service.FooService.*(..))"/>
+        <aop:advisor advice-ref="txAdvice" pointcut-ref="fooServiceOperation"/>
+    </aop:config>
+#+END_SRC
+java based configuration
+@EnableTransactionManagement
+@Transactional 可以应用到类和方法,而且方法必须是public,不建议放到接口上.
+#+BEGIN_COMMEN
+ The fact that Java annotations are not inherited from interfaces means 
+that if you are using class-based proxies ( proxy-target-class="true") 
+or the weaving-based aspect ( mode="aspectj")
+#+END_COMMEN
+#+BEGIN_SRC java
+public @interface Transactional {
+	@AliasFor("transactionManager")
+	String value() default "";
+
+	@AliasFor("value")
+	String transactionManager() default "";
+
+	Propagation propagation() default Propagation.REQUIRED;
+
+	Isolation isolation() default Isolation.DEFAULT;
+
+	int timeout() default TransactionDefinition.TIMEOUT_DEFAULT;
+
+	boolean readOnly() default false;
+
+	Class<? extends Throwable>[] rollbackFor() default {};
+
+	String[] rollbackForClassName() default {};
+
+	Class<? extends Throwable>[] noRollbackFor() default {};
+
+	String[] noRollbackForClassName() default {};
+
+}
+#+END_SRC
+*** 事务传播
