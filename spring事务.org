@@ -1,0 +1,4 @@
+* Transaction Managament
+** Spring框架提供了一致的事务管理
++ 一致的编程模型覆盖了不同的事务API,如JTA(Java Transaction API),JDBC,Hibernate,JPA(Java Persistent API), JDO(Java Data Objects)
+
