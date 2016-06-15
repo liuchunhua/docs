@@ -1,0 +1,347 @@
+* JNA(java native library)
+[[http://java-native-access.github.io/jna/4.2.1/overview-summary.html][overview-summary]]
+** 加载JNA
+JNA包含了一些小的，特定平台的共享库，通过这些库能够进行原生操作。JNA首先从
+[jna.boot.library.path, system library path, jna.jar]加载。
+JNA的本地库名为“jnidispatch”， 可以通过jna.boot.library.name修改。
+** 访问共享库
+当需要使用共享库中的方法时，首先创建一个对应类。
+#+BEGIN_SRC java
+//首先方式 接口映射
+public interface CLibrary extends Library {
+    CLibrary INSTANCE = (CLibrary)Native.loadLibrary("c", CLibrary.class);
+}
+// 直接映射
+public class CLibrary {
+    static {
+        Native.register("c");
+    }
+}
+#+END_SRC
+#+Caption: 加载库名
+| OS                 | Library Name                                       | String |
+|--------------------+----------------------------------------------------+--------|
+| Windows            | user32.dll                                         | user32 |
+| Linux              | libX11.so                                          | X11    |
+| Mac OS X           | libm.dylib                                         | m      |
+| Mac OS X Framework | /System/Library/Frameworks/Carbon.framework/Carbon | Carbon |
+| Any Platform       | <current process>                                  | null   |
+
+加载路径
++ 设置java.library.path,指定共享库位置
++ 设置环境变量，windows PATH，linux LD_LIBRARY_PATH, OSX DYLD_LIBRARY_PATH
++  放到类路径下， {OS}-{ARCH}/{LIBRARY},如 win32-x86,win32-x86-64,linux-amd64
+** 方法映射
+#+BEGIN_SRC java
+public interface CLibrary extends Library {
+    int atol(String s);
+}
+
+public class CLibrary {
+    public static native int atol(String s);
+}
+#+END_SRC
+如果想把方法名改为符合java规范的方法名，可以实现FunctionMapper接口，
+然后将<Library.OPTION_FUNCTION_MAPPER, FuntionMapper>放入map中，调用Native.loadLibrary(string, class, map).
+| C Type                      | Native Representation                                                               | Java Type                             |
+| char                        | 8-bit integer                                                                       | byte                                  |
+| wchar_t                     | platform-dependent                                                                  | char                                  |
+| short                       | 16-bit integer                                                                      | short                                 |
+| int                         | 32-bit integer                                                                      | int                                   |
+| int                         | boolean flag                                                                        | boolean                               |
+| enum                        | enumeration type                                                                    | int (usually)                         |
+| long long, __int64          | 64-bit integer                                                                      | long                                  |
+| float                       | 32-bit floating point                                                               | float                                 |
+| double                      | 64-bit floating point                                                               | double                                |
+| pointer (e.g. void*)        | platform-dependent (32- or 64-bit pointer to memory)                                | Buffer Pointer                        |
+| pointer (e.g. void*), array | 32- or 64-bit pointer to memory (argument/return) contiguous memory (struct member) | &lt;P&gt;[] (array of primitive type) |
+| long                        | platform-dependent (32- or 64-bit integer)                                          | NativeLong                            |
+| const char*                 | NUL-terminated array (native encoding or jna.encoding)                              | String                                |
+| const wchar_t*              | NUL-terminated array (unicode)                                                      | WString                               |
+| char**                      | NULL-terminated array of C strings                                                  | String[]                              |
+| wchar_t**                   | NULL-terminated array of wide C strings                                             | WString[]                             |
+| void**                      | NULL-terminated array of pointers                                                   | Pointer[]                             |
+| struct* struct              | pointer to struct (argument or return) (struct by value (member of struct)          | Structure                             |
+| union                       | same as Structure                                                                   | Union                                 |
+| struct[]                    | array of structs, contiguous in memory                                              | Structure[]                           |
+| void (*FP)()                | function pointer (Java or native)                                                   | Callback                              |
+| pointer (&lt;T&gt; *)       | same as Pointer                                                                     | PointerType                           |
+| other                       | integer type                                                                        | IntegerType                           |
+| other                       | custom mapping, depends on definition                                               | NativeMapped                          |
+** Buffers/Memory Blocks
+Use arrays to represent buffers of primitive types passed to a function for use only during the function invocation. A native method cannot return a Java array, since there is no canonical way to indicate the intended length of the returned array. Instead, use one of the array access methods in the Pointer class, supplying the length of the returned array.
+Buffers may also be used as a memory buffer input argument; direct byte buffers can often provide much improved performance over primitive arrays. A pointer provided by native code may be converted to a Buffer by calling Pointer.getByteBuffer(long, long).
+
+If you need to pass in a subset of a primitive array, you can do so by wrapping it in a Buffer subclass, such as ByteBuffer, using the ByteBuffer.wrap(byte[],int,int) method. Wrapping an array in a buffer also allows you to pass only a subset of a Java array to the native function.
+** Callbacks (Function Pointers)
+JNA supports supplying Java callbacks to native code. You must define an interface that extends the Callback interface, and define a single callback method with a signature that matches the function pointer required by the native code. The name of the method may be something other than "callback" only if there is only a single method in the interface which extends Callback or the class which implements Callback. The arguments and return value follow the same rules as for a direct function invocation.
+When accessing Windows APIs, sometimes the documentation indicates that a function pointer parameter must refer to a function that resides in a DLL. In these instances, add the DLLCallback interface to your callback definition. The function pointer as seen by Windows will be located in the jnidispatch.dll module.
+
+If the callback returns a String or String[], the returned memory will be valid until the returned object is GC'd.
+
+If your native code initializes function pointers within a struct, JNA will automatically generate a Callback instance matching the declared type. This enables you to easily call the function supplied by native code using proper Java syntax.
+#+BEGIN_SRC java
+  // Original C code
+  struct _functions {
+      int (*open)(const char*,int);
+      int (*close)(int);
+  };
+
+  // Equivalent JNA mapping
+  public class Functions extends Structure {
+      public static interface OpenFunc extends Callback {
+          int invoke(String name, int options);
+      }
+      public static interface CloseFunc extends Callback {
+          int invoke(int fd);
+      }
+      public OpenFunc open;
+      public CloseFunc close;
+  }
+  //...
+  Functions funcs = new Functions();
+  lib.init(funcs);
+  int fd = funcs.open.invoke("myfile", 0);
+  funcs.close.invoke(fd);
+#+END_SRC
+Callbacks may also be used as return values. Native function pointers are wrapped in a proxy implementing the declared Callback type, to facilitate calling from Java.
+#+BEGIN_SRC java
+// Original C code
+typedef void (*sig_t)(int);
+sig_t signal(int signal, sig_t sigfunc);
+
+// Equivalent JNA mapping
+public interface CLibrary extends Library {
+    public interface SignalFunction extends Callback {
+        void invoke(int signal);
+    }
+    SignalFunction signal(int signal, SignalFunction func);
+}
+#+END_SRC
+** Structures
+
+The Java Structure represents a native struct. By default, this type is treated as a pointer to structure (struct *) on the native side when used as a parameter or return value. When used as a structure field, the structure is interpreted as by value. To force the complementary interpretation, the tagging interfaces Structure.ByValue and Structure.ByReference are provided.
+The data within a Java Structure is automatically written to native memory just before a native function call with a struct parameter, and automatically read from native memory after the function returns.
+
++ Pointer-to-Structure Arguments
+
+To pass a pointer to a structure as an argument, simply use the Java structure subclass, and a pointer to native data memory will be used. The contents of the structure will be passed to the function and updated when the function returns. Structures are packed according to the default alignment rules for the platform's native C structs.
+#+BEGIN_SRC java
+
+// Original C code
+typedef struct _Point {
+  int x, y;
+} Point;
+
+Point* translate(Point* pt, int dx, int dy);
+
+// Equivalent JNA mapping
+class Point extends Structure { public int x, y; }
+Point translate(Point pt, int x, int y);
+...
+Point pt = new Point();
+Point result = translate(pt, 100, 100);
+#+END_SRC
++ Structure by Value Arguments/Return
+
+To pass a structure by value, first define the structure, then define an empty class from that which implements Structure.ByValue. Use the ByValue class as the argument or return type.
+
+#+BEGIN_SRC java
+// Original C code
+typedef struct _Point {
+  int x, y;
+} Point;
+
+Point translate(Point pt, int dx, int dy);
+
+// Equivalent JNA mapping
+class Point extends Structure {
+    public static class ByValue extends Point implements Structure.ByValue { }
+    public int x, y;
+}
+Point.ByValue translate(Point.ByValue pt, int x, int y);
+...
+Point.ByValue pt = new Point.ByValue();
+Point result = translate(pt, 100, 100);
+#+END_SRC
++ Array-of-Structure Arguments
+
+To pass an array of structures, simply use a Java array of the desired structure type. If the array is uninitialized, it will be auto-initialized prior to the function call.
+
+#+BEGIN_SRC java
+
+// Original C code
+void get_devices(struct Device[], int size);
+
+// Equivalent JNA mapping
+int size = ...
+Device[] devices = new Device[size];
+lib.get_devices(devices, devices.length);
+#+END_SRC
+Alternatively, you can reallocate a single Structure instance into an array as follows:
+#+BEGIN_SRC java
+Device dev = new Device();
+// As an array of Structure
+Structure[] structs = dev.toArray(size);
+// As an array of Device
+Device[] devices = (Device[])dev.toArray(size);
+#+END_SRC
+Returning an Array of struct
+
+Declare the method as returning a Structure of the appropriate type, then invoke Structure.toArray(int) to convert to an array of initialized structures of the appropriate size. Note that your Structure class must have a no-args constructor, and you are responsible for freeing the returned memory if applicable in whatever way is appropriate for the called function.
+#+BEGIN_SRC java
+// Original C code
+struct Display* get_displays(int* pcount);
+void free_displays(struct Display* displays);
+
+// Equivalent JNA mapping
+Display get_displays(IntByReference pcount);
+void free_displays(Display[] displays);
+...
+IntByReference pcount = new IntByReference();
+Display d = lib.get_displays(pcount);
+Display[] displays = (Display[])d.toArray(pcount.getValue());
+...
+lib.free_displays(displays);
+#+END_SRC
++ Nested Structure Definitions
+
+Nested structures are treated as consecutive memory (as opposed to pointers to structures). For example:
+
+#+BEGIN_SRC java
+// Original C code
+typedef struct _Point {
+  int x, y;
+} Point;
+
+typedef struct _Line {
+  Point start;
+  Point end;
+} Line;
+
+// Equivalent JNA mapping
+class Point extends Structure {
+  public int x, y;
+}
+
+class Line extends Structure {
+  public Point start;
+  public Point end;
+}
+#+END_SRC
+Explicit initialization of nested structures is not required; the objects will be created as needed and properly mapped to the parent structure's memory.
+If you need a pointer to a structure within your structure, you can use the Structure.ByReference tagging interface to indicate the field should be treated as a pointer instead of inlining the full structure.
+
+#+BEGIN_SRC c java
+
+// Original C code
+typedef struct _Line2 {
+  Point* p1;
+  Point* p2;
+} Line2;
+
+// Equivalent JNA mapping
+class Point extends Structure {
+    public static class ByReference extends Point implements Structure.ByReference { }
+    public int x, y;
+}
+class Line2 extends Structure {
+  public Point.ByReference p1;
+  public Point.ByReference p2;
+}
+The more general case is just a pointer to memory. This allows you to define the field without necessarily defining the inner structure itself, similar to declaring a struct without defining it in C:
+// Original C code
+typedef struct _Line2 {
+  Point* p1;
+  Point* p2;
+} Line2;
+
+// Equivalent JNA mapping
+class Line2 extends Structure {
+  public Pointer p1;
+  public Pointer p2;
+}
+
+Line2 line2;
+Point p1, p2;
+...
+line2.p1 = p1.getPointer();
+line2.p2 = p2.getPointer();
+#+END_SRC
+Nested arrays
+
+Structures with nested arrays require an explicit constructor to ensure the structure size is properly calculated.
+#+BEGIN_SRC c java
+typedef struct _Buffer {
+  char buf1[32];
+  char buf2[1024];
+} Buffer;
+
+class Buffer extends Structure {
+  public byte[] buf1 = new byte[32];
+  public byte[] buf2 = new byte[1024];
+}
+#+END_SRC
+Calculation of the native size of the structure is deferred until the structure is actually used.
+Variable-sized structures
+
+Structures with variable size, or with primitive array elements, for example:
+
+#+BEGIN_SRC c java
+// Original C code
+typedef struct _Header {
+  int flags;
+  int buf_length;
+  char buffer[1];
+} Header;
+#+END_SRC
+
+require a constructor which establishes the required size for the structure and initializes things appropriately. For example:
+#+BEGIN_SRC c java
+// Equivalent JNA mapping
+class Header extends Structure {
+  public int flags;
+  public int buf_length;
+  public byte[] buffer;
+  public Header(int bufferSize) {
+    buffer = new byte[bufferSize];
+    buf_length = buffer.length;
+    allocateMemory();
+  }
+}
+#+END_SRC
+Volatile fields
+
+Normally, JNA will write the entire contents of a Structure prior to a function call and read back from native memory after the function call. Sometimes a structure field is not intended for client use, gets modified asynchronously by hardware, or otherwise is effectively read-only. If you expect any fields of the structure to be modified by any agent outside your Java program, you should mark the field volatile. This prevents JNA from automatically updating the native memory from the Java value. You can still force an update of the native memory from the Java value by calling Structure.writeField(String) for the field in question.
+#+BEGIN_SRC c java
+class Data extends com.sun.jna.Structure {
+  public volatile int refCount;
+  public int value;
+}
+...
+Data data = new Data();
+#+END_SRC
+In the above example, the field refCount will only be written to native memory based on the Java value with a call to data.writeField("refCount"). To obtain the current state of native memory, call Structure.read() (to update the entire structure) or data.readField("refCount") (to update just the refCount field).
+Read-only fields
+
+If you want to absolutely prevent Java code from modifying a Structure's contents, you may mark its fields final. Structure reads can still overwrite the values based on native memory contents, but no Java code will be able to modify any of the fields.
+
+#+BEGIN_SRC c java
+class ReadOnly extends com.sun.jna.Structure {
+  // Do not initialize the field here, or the compiler will inline the value!
+  public final int refCount;
+  {
+    // Initialize fields here, to ensure the values are not inlined
+    refCount = -1;
+    read();
+    // refCount might now have a different value
+  }
+}
+...
+ReadOnly ro = new ReadOnly();
+// Will not compile!
+ro.refCount = 0;
+#+END_SRC
+Make certain you attend to the following:
+All final fields should be initialized in the constructor.
+If you call Structure.read() from anywhere but the constructor, keep in mind that the compiler and/or hotspot will be assuming field values will not change across that function call.
