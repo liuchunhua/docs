@@ -28,7 +28,7 @@ public class CLibrary {
 | Any Platform       | <current process>                                  | null   |
 
 加载路径
-+ 设置java.library.path,指定共享库位置
++ 设置jna.library.path,指定共享库位置
 + 设置环境变量，windows PATH，linux LD_LIBRARY_PATH, OSX DYLD_LIBRARY_PATH
 +  放到类路径下， {OS}-{ARCH}/{LIBRARY},如 win32-x86,win32-x86-64,linux-amd64
 ** 方法映射
