@@ -1,0 +1,82 @@
+* Reader Form
+** Symbols
++ Symbols 以非数字字符开头，#\D[0-9a-zA-Z*+!-_'\?
++ '/' 分割命名空间和变量名
++ '.' e.g. java.util.BitSet clojure.symbols
++ Symbols以':'开始或结束被保留
+** Literals
++ Strings "",可以多行
++ Numbers
+  - Integers可以无限长，在Long型范围内解释为Long,否则为clojure.lang.BigInts。
+    'N123'永远解读为BigInts,按进制(2-36)表示2r01010, 8r53, 36r16
+  - 浮点数是Double型;
+    'M123.1'为BigDecimal
+  - Ratio e.g. 1/2
++ Characters \c,\newline, \space, \tab, \formfeed, \backspace, and \return
++ nil nothing null
++ Booleans true false
++ Keywords
+  - 以‘：’开头，e.g. :fred
+  - 不能包含‘.‘或类名
+  - 可以包含命名空间 :person:name
+  - '::'代表当前命名空间
+** Lists 
+（a b c)
+** Vectors
+[1 2 3]
+** Maps
+{:a 1 :b 1} or {:a 1,:b 1}
+** Map namespace Syntax
+#+BEGIN_SRC clojure
+#:person{:first "Han"
+         :last "Solo"
+         :ship #:ship{:name "Millenium Falcon"
+                      :model "YT-1300f light freighter"}}
+#+END_SRC
+解读为
+#+BEGIN_SRC clojure
+{:person/first "Han"
+ :person/last "Solo"
+ :person/ship {:ship/name "Millenium Falcon"
+               :ship/model "YT-1300f light freighter"}}
+#+END_SRC
+** Sets
+#{:a :b :c}
+** Macro characters
+*Quote(')*
+#+BEGIN_VERSE
+'form => (quote from)
+#+END_VERSE
+*Character (\)* 
+*Comment (;)* 
+*Deref (@)* 
+#+BEGIN_VERSE
+@form ⇒ (deref form)
+#+END_VERSE
+*Metadata (^)* 
+元数据是与对象：Symbols,Lists, Vectors, Sets, Mapss, tagged literals returning an IMeta, and record, type, and constructor calls关联的map.
+一种简单版本允许元数据为简单的引用或String,如^String,这将当作为单项map ^{:tag String}
+元数据也可以是keyword ^:dynamic x ^{:dynamic true} x
+*Dispatch (#)*
++ #{} Sets
++ Regex patterns "#\d"
++ Var-quote(#')
+#+BEGIN_VERSE
+#'x ⇒ (var x)
+#+END_VERSE
++ Anonymous function literal (#()) 匿名函数
+#+BEGIN_VERSE
+#(…​) ⇒ (fn [args] (…​))
+#+END_VERSE
++ gnore next form (#_)
+** Syntax-quote (`, note, the "backquote" character), Unquote (~) and Unquote-splicing (~@)
+除了Symbols, Lists, Vectors, Sets and Maps,`x同'x。
+对于Symbols,syntax-quote '`'解析引用成完全限定(namespace/name)的引用或类名。如果引用是非命名限定的，已#结尾，返回自动生成的引用名。
+对于Lists/Vectors/Sets/Maps,语法引用生成当前数据结构的模板，在模板中非限定的引用将会进行语法引用。‘~’‘~@’标识的引用将会作为表达式求值，
+并在模板中替换为相应的值。
+#+BEGIN_VERSE clojure
+user=> (def x 5)
+user=> (def lst '(a b c))
+user=> `(fred x ~x lst ~@lst 7 8 :nine)
+(user/fred user/x 5 user/lst a b c 7 8 :nine)
+#+END_VERSE

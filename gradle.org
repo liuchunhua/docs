@@ -1,0 +1,36 @@
+* Gradle 学习笔记
+** Chapter 20:The Build LifeCycle(构建生命周期)
+*** build phases(阶段)
++ 初始化 :: [[https://docs.gradle.org/current/dsl/org.gradle.api.Project.html][Project]]~~实例代表一个工程
++ 配置
++ 执行
+*** setting file
+默认是settings.gradle,在初始化阶段执行。
+*** Mutil-project builds(多个工程的构建）
+**** Project Loations
+多个工程的依赖形成一颗有一个根节点的树。每一个节点代表一个工程，每一个工程用在数中的位置形成一个路径，能够计算出工程在文件系统的物理位置。
+工程树在settings.gradle中定义，默认情况下配置文件的位置就是工程的位置。
+**** Building tree
+支持的配置方式有：Hierarchical 和 flat
++ Hierarchical ::使用工程的路径作为参数
+  #+BEGIN_EXAMPLE
+  include 'project1', 'project2:child', 'project3:child1'
+  #+END_EXAMPLE
+  "services:api"代表"services/api"文件夹，'services:hotels:api'代表三个工程：'services', 'services:hotels' and 'services:hotels:api'.
++ flat :: 使用文件夹名作为参数
+  #+BEGIN_EXAMPLE
+  includeFlat 'project3', 'project4'
+  #+END_EXAMPLE
+
+使用[[https://docs.gradle.org/current/javadoc/org/gradle/api/initialization/ProjectDescriptor.html][project descriptors]]修改工程树
+#+BEGIN_EXAMPLE groovy
+println rootProject.name
+println project(':projectA').name
+//or
+rootProject.name = 'main'
+project(':projectA').projectDir = new File(settingsDir, '../my-project-a')
+project(':projectA').buildFileName = 'projectA.gradle'
+#+END_EXAMPLE
+*** Initialization（初始化）
+*** Configuration and execution of a single project build(配置并执行单一工程构建)
+*** Responding to the lifecycle int the build project(生命周期的反馈)
