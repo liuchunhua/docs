@@ -1,0 +1,12 @@
++ 处理utf-8(+BOM)文件
+#+BEGIN_SRC bash
+find . -name "*.java"|xargs -I {} file {}|grep "BOM"|cut -d : -f 1 > files.txt
+find . -type d -a ! -name "bak" -exec mkdir -p bak/{} \;
+while read readline; do tail --bytes=+4 $readline > "bak/${readline}";done < files.txt
+#+END_SRC
++ windows下gbk转utf-8
+#+BEGIN_SRC bash
+find . -name "*.java"|xargs -I {} file {}|grep "ISO"|cut -d : -f 1 > files.txt
+find . -type d -a ! -name "bak" -exec mkdir -p bak/{} \;
+while read readline; do iconv -f gbk -t utf-8 $readline > "bak/${readline}";done < files.txt
+#+END_SRC

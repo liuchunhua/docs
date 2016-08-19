@@ -1,4 +1,47 @@
 * Gradle 学习笔记
+** chapter 16:Writing Build Scripts
+***  The Project API
++ 如果发放没有在构建脚本里定义，将交给Project对象
++ 如果属性没有在构建脚本里定义，将交给Project对象
+*** Standard project properties
+| Name        | Type       | Default Value                              |
+|-------------+------------+--------------------------------------------|
+| project     | Project    | Project instance                           |
+| name        | String     | the name of Project                        |
+| path        | String     | the absolute of project                    |
+| description | String     | A description of the project               |
+| projectDir  | File       | The directory containing the build script. |
+| buildDir    | File       | projectDir/build                           |
+| group       | Object     |                                            |
+| version     | Object     |                                            |
+| ant         | AntBuilder |                                            |
+
+*** 变量定义
+#+BEGIN_EXAMPLE
+def dest = "dest"
+task copy(type:Copy){
+    from "source"
+    into dest
+}
+#+END_EXAMPLE
+*** Extra properties
+#+BEGIN_SRC 
+ext {
+    springVersion = "3.1.0.RELEASE"
+    emailNotification = "build@master.org"
+}
+#+END_SRC
+*** Configuring arbitrary objects
+#+BEGIN_SRC groovy
+task configure << {
+    def pos = configure(new java.text.FieldPosition(10)) {
+        beginIndex = 1
+        endIndex = 5
+    }
+    println pos.beginIndex
+    println pos.endIndex
+}
+#+END_SRC
 ** Chapter 20:The Build LifeCycle(构建生命周期)
 *** build phases(阶段)
 + 初始化 :: [[https://docs.gradle.org/current/dsl/org.gradle.api.Project.html][Project]]~~实例代表一个工程
@@ -32,5 +75,77 @@ project(':projectA').projectDir = new File(settingsDir, '../my-project-a')
 project(':projectA').buildFileName = 'projectA.gradle'
 #+END_EXAMPLE
 *** Initialization（初始化）
+在当前文件夹下没有settings.gradle,gradle寻找settings.gradle遵循以下：
++ 当前文件夹下有master文件夹
++ 没有发现，查找父目录
++ 还没有发现，按照单一工程构建
++ 如果发现settings.gradle，gradle检查当前工程是否是工程的一部分，如果是按照多工程构建，否则按单一工程构建
+
+如果是子工程，只有子工程和其依赖的工程将会构建，但是gradle需要创建整个工程的配置。使用“-u"可以禁止gradle查找父目录的配置
+
+Gradle会为每一个工程创建一个~Project~对象，对象的名称等于其所在目录名称。
+
 *** Configuration and execution of a single project build(配置并执行单一工程构建)
+单一工程直接执行参数指定的任务
 *** Responding to the lifecycle int the build project(生命周期的反馈)
+使用特定接口或者闭包接受通知。
+#+caption: Adding of test task to each project which has certain property set
+build.gradle
+#+BEGIN_SRC groovy
+allprojects {
+    afterEvaluate { project ->
+        if (project.hasTests) {
+            println "Adding test task to $project"
+            project.task('test') << {
+                println "Running tests for $project"
+            }
+        }
+    }
+}
+#+END_SRC
+projectA.gradle
+#+BEGIN_SRC groovy
+hasTests = true
+#+END_SRC
+
+#+BEGIN_SRC groovy
+gradle.afterProject {project, projectState ->
+    if (projectState.failure) {
+        println "Evaluation of $project FAILED"
+    } else {
+        println "Evaluation of $project succeeded"
+    }
+}
+#+END_SRC
+#+caption: Setting of certain property to all tasks
+#+BEGIN_SRC groovy
+tasks.whenTaskAdded { task ->
+    task.ext.srcDir = 'src/main/java'
+}
+
+task a
+
+println "source dir is $a.srcDir"
+#+END_SRC
+
+#+caption: Logging of start and end of each task execution
+#+BEGIN_SRC groovy
+task ok
+
+task broken(dependsOn: ok) << {
+    throw new RuntimeException('broken')
+}
+
+gradle.taskGraph.beforeTask { Task task ->
+    println "executing $task ..."
+}
+
+gradle.taskGraph.afterTask { Task task, TaskState state ->
+    if (state.failure) {
+        println "FAILED"
+    }
+    else {
+        println "done"
+    }
+}
+#+END_SRC
