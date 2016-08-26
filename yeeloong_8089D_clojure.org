@@ -1,0 +1,144 @@
+#+TITLE: yeeloong 8089D Clojure+Emacs+Cider开发环境
+* 系统
+debian基本系统+xorg+openbox+emacs+ibus+pinyin
+
+** TODO 重装系统
+我原先的系统是OpenBSD5.6,因为要使用JDK,所以需要重新装上Debian wheezy系统.
+我是通过网络安装的,只装基本文件系统.安装完重启后,安装xinit.
+
+参考文章<<Emacs is My New Window Manager>>
+http://www.howardism.org/Technical/Emacs/new-window-manager.html
+
+sudo apt-get install -y xinit
+** 安装Emacs
+wheezy版本只有emacs23,这个版本不支持package,所以需要自己编译emacs24.
+#+BEGIN_EXAMPLE
+sudo apt-get install libxaw7-dev libxpm-dev libpng12-dev libtiff5-dev libgif-dev libjpeg8-dev libgtk2.0-dev libncurses5-dev
+sudo apt-get install autoconf automake
+sudo apt-get build-dep emacs
+#+END_EXAMPLE
+下载EMACS源码
+
+http://mirrors.ustc.edu.cn/gnu/emacs/emacs-24.4.tar.gz
+#+BEGIN_EXAMPLE
+tar -xzf emacs-24.4.tar.gz
+cd emacs-24.4
+./autogen.sh
+./configure --prefix=/opt/emacs24
+make
+sudo make install
+#+END_EXAMPLE
+** 安装中文字体和ibus输入法
+#+BEGIN_EXAMPLE
+sudo apt-get install ttf-wqy-microhei ttf-wqy-zenhei ttf-arphic-*
+sudo apt-get install ibus ibus-clutter ibus-googlepinyin ibus-gtk ibus-gtk3 ibus-qt4 python-ibus
+#+END_EXAMPLE
+** 安装openbox
+#+BEGIN_EXAMPLE
+sudo apt-get install openbox
+#+END_EXAMPLE
+本来是不需要openbox的,但是我需要中文输入法,没有openbox输入法
+根本不管用.
+编辑.xinitrc,添加
+#+BEGIN_EXAMPLE
+export LC_ALL=zh_CN.UTF-8
+export LANGUAGE=zh_CN.UTF-8
+export LANG=zh_CN.UTF-8
+
+export XMODIFIERS="@im=ibus"
+export GTK_IM_MODULE=ibus
+export QT_IM_MODULE=ibus
+
+ibus-daemon -d
+exec openbox-session
+#+END_EXAMPLE
+编辑~/.config/openbox/autostart.sh,添加
+emacs
+* 龙芯OpenJDK 6 - MIPS32位
+下载该文件，解压缩到自己的文件夹。在.profile中配置JAVA_HOME和PATH
+
+http://www.loongnix.org/ftp/toolchain/java/openjdk6/jdk6-mips32-rc23.tgz
+#+BEGIN_EXAMPLE
+$ java -version
+java version "1.6.0-internal"
+OpenJDK Runtime Environment (build 1.6.0-internal-root_15_dec_2014_11_40-b00)
+OpenJDK Server EVM (build 14.0-b16, mixed mode)
+#+END_EXAMPLE
+* Leiningen
+http://leiningen.org/
+下载lein脚本
+
+chmod u+x lein
+
+在执行之前需要编辑一下，因为龙芯的jdk不支持-XX
+#+BEGIN_EXAMPLE
+diff lein lein_backp 
+136c136
+< export LEIN_JVM_OPTS="${LEIN_JVM_OPTS-""}"
+---
+> export LEIN_JVM_OPTS="${LEIN_JVM_OPTS-"-XX:+TieredCompilation -XX:TieredStopAtLevel=1"}"
+#+END_EXAMPLE
+将脚本所在路径加入到PATH中。
+lein脚本将在~/.lein下安装。
+* Emacs
+** Emacs全屏
+参考Emacs is My New Window Manager: 
+http://www.howardism.org/Technical/Emacs/new-window-manager.html
+
+配置自己的.emacs
+#+BEGIN_SRC lisp
+(set-frame-parameter nil 'fullscreen 'fullboth) ;;全屏
+(tool-bar-mode -1)   ;;禁用工具栏
+(scroll-bar-mode -1) ;;禁用滚动条
+(menu-bar-mode -1)   ;;菜单栏
+#+END_SRC
+
+** Clojure with Emacs:
+[http://clojure-doc.org/articles/tutorials/emacs.html]
+添加package site
+添加以下代码到~/.emacs.d/init.el或.emacs
+#+BEGIN_SRC lisp
+(require 'package)
+(add-to-list 'package-archives
+             '("melpa-stable" . "http://melpa-stable.milkbox.net/packages/"))
+(package-initialize)
+#+END_SRC
+M-x package-refresh-contents
+安装一下包
++ clojure-mod
++ cider
++ projectile
+使用M-x package-install 安装
+或自动安装
+#+BEGIN_SRC lisp
+(defvar my-packages '(better-defaults
+                      projectile
+                      clojure-mode
+                      cider))
+
+(dolist (p my-packages)
+  (unless (package-installed-p p)
+    (package-install p)))
+#+END_SRC
+* 使用
+** create a project
+$lein new command-line-args
+在Emacs中打开project.clj文件
+#+BEGIN_SRC clojure
+(defproject command-line-args "0.1.0-SNAPSHOT"
+  :description "FIXME: write description"
+  :url "http://example.com/FIXME"
+  :license {:name "Eclipse Public License"
+            :url "http://www.eclipse.org/legal/epl-v10.html"}
+  :dependencies [[org.clojure/clojure "1.6.0"]]
+  :profiles {:dev {:plugins [[cider/cider-nrepl "0.8.2"]]}}) ;;添加cider-nrepl插件
+#+END_SRC
+
+开启REPL会话
+
+M-x cider-jack-in
+
+退出会话
+
+M-x cider-quit
+
