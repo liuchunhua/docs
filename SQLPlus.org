@@ -1,0 +1,80 @@
+* SQLPlus
+** 查看表定义
+#+BEGIN_SRC sql
+DESCRIBE one_table;
+#+END_SRC
+** 执行SQL语句块
+#+BEGIN_SRC sql
+DECLARE
+    x   NUMBER := 100;
+    BEGIN
+        FOR i IN 1..10 LOOP
+           IF MOD (i, 2) = 0 THEN    --i is even
+             INSERT INTO temp VALUES (i, x, 'i is even');
+           ELSE
+             INSERT INTO temp VALUES (i, x, 'i is odd');
+           END IF;
+           x := x + 100;
+       END LOOP;
+   END;
+   .
+/
+#+END_SRC
+
+** 自动保存数据变更
++ 打开自动提交
+#+BEGIN_SRC sql
+SET AUTOCOMMIT ON
+#+END_SRC
+或者
+#+BEGIN_SRC sql
+SET AUTICOMMIT IMMEDIATE
+#+END_SRC
++ 每执行一定数量DML语句，自动提交
+#+BEGIN_SRC sql
+SET AUTOCOMMIT 10
+#+END_SRC
++ 关闭自动提交
+#+BEGIN_SRC sql
+SET AUTOCOMMIT OFF
+#+END_SRC
+
+** 修改列名
+#+BEGIN_SRC sql
+COLUMN column_name HEADING column_heading
+#+END_SRC
+重置列名
+#+BEGIN_SRC sql
+COLUMN column_name CLEAR
+#+END_SRC
+#+BEGIN_SRC sql
+COLUMN column_name FORMAT model
+#+END_SRC
+限制文本字段的长度
+#+BEGIN_SRC sql
+COLUMN LAST_NAME FORMAT A4
+#+END_SRC
+** 列值换行，打印行间隔符
++ "RECSEP" 决定什么时候打印行间隔符，值"EACH":每行打印, 值"WRAPPED":换行发生时，值"OFF"：不要打印
++ "RECSEPCHAR":设置行间隔符
+#+BEGIN_SRC sql
+COLUMN JOB_TITLE FORMAT A20 WORD_WRAPPED
+SET RECSEP WRAPPED
+SET RECSEPCHAR "-"
+#+END_SRC 
+#+BEGIN_EXAMPLE
+LAST_NAME                 JOB_TITLE            CITY
+------------------------- -------------------- --------
+King                      President            Seattle
+Kochhar                   Administration Vice  Seattle
+                          President
+-------------------------------------------------------
+De Haan                   Administration Vice  Seattle
+                          President
+-------------------------------------------------------
+Russell                   Sales Manager        Oxford
+Partners                  Sales Manager        Oxford
+Hartstein                 Marketing Manager    Toronto
+
+6 rows selected.
+#+END_EXAMPLE

@@ -1,0 +1,81 @@
+* postgresql 10 安装
+** debian 9.0 快速安装
+#+BEGIN_SRC bash
+apt-get build_dep postgresql-9.6
+./configure --with-systemd
+make
+su
+make install
+adduser postgres
+mkdir /usr/local/pgsql/data
+chown postgres /usr/local/pgsql/data
+su - postgres
+/usr/local/pgsql/bin/initdb -U user -W -A password -E UTF-8 -D /usr/local/pgsql/data 
+/usr/local/pgsql/bin/pg_ctl -D /usr/local/pgsql/data -l postgres.log start
+/usr/local/pgsql/bin/createdb test
+/usr/local/pgsql/bin/psql test
+#+END_SRC
+** 安装后配置环境变量
+#+BEGIN_SRC bash
+LD_LIBRARY_PATH=/usr/local/pgsql/lib
+export LD_LIBRARY_PATH
+PATH=/usr/local/pgsql/bin:$PATH
+export PATH
+MANPATH=/usr/local/pgsql/share/man:$MANPATH
+export MANPATH
+#取代-D参数
+PGDATA=/usr/local/pgsql/data
+export PGDATA
+#+END_SRC
+** 创建database cluster
++ database cluster:
+单独运行数据库服务实例下的数据库集合
++ 初始化database cluster
+#+BEGIN_SRC shell
+$ initdb -D /usr/local/pgsql/data
+或者
+$ pg_ctl -D /usr/local/pgsql/data initdb
+#+END_SRC
+** systemd自启动
+#+BEGIN_EXAMPLE
+[Unit]
+Description=PostgreSQL database server
+Documentation=man:postgres(1)
+
+[Service]
+Type=forking
+User=postgres
+ExecStart=/usr/local/pgsql/bin/pg_ctl start -D /usr/local/pgsql/data -l /usr/local/pgsql/data/log/postgres.log -s -w -t 300
+ExecReload=/bin/kill -HUP $MAINPID
+KillMode=mixed
+KillSignal=SIGINT
+TimeoutSec=0
+
+[Install]
+WantedBy=multi-user.target
+#+END_EXAMPLE
+** 结巴分词插件
+git clone https://github.com/jaiminpan/pg_jieba
+
+#+BEGIN_EXAMPLE
+cd pg_jieba
+USE_PGXS=1 make
+USE_PGXS=1 make install 
+#+END_EXAMPLE
+
+#+BEGIN_EXAMPLE
+jieba=# create extension pg_jieba;
+CREATE EXTENSION
+
+jieba=#  select * from to_tsvector('jiebacfg', '小明硕士毕业于中国科学院计算所，后在日本京都大学深造');
+                                                 to_tsvector
+--------------------------------------------------------------------------------------------------------------
+ '中国科学院':5 '于':4 '后':8 '在':9 '小明':1 '日本京都大学':10 '毕业':3 '深造':11 '硕士':2 '计算所':6 '，':7
+(1 row)
+
+jieba=#  select * from to_tsvector('jiebacfg', '李小福是创新办主任也是云计算方面的专家');
+                                        to_tsvector
+-------------------------------------------------------------------------------------------
+ '专家':11 '主任':5 '也':6 '云计算':8 '创新':3 '办':4 '方面':9 '是':2,7 '李小福':1 '的':10
+(1 row)
+#+END_EXAMPLE
