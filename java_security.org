@@ -1,0 +1,14 @@
+#+STARTUP:showall
+
+#+TITLE: JAVA SECURITY
+
+* 基础安全架构
+  java api覆盖了主要的安全领域，包括cryptography(加密)，public key infrastructure(PKI,公开密钥)，authentication(认证)，secure communication(安全连接)和access control(访问控制)。
+
+  遵循的设计原则：
+  * 实现对立性 :: 程序不必自己实现安全代码，可以直接使用提供者(Provider)的服务，服务通过标准接口插入到java平台
+  * 互操作性 :: 跨应用程序访问Provider, 程序不绑定特定的提供者，提供者也没有绑定特定的程序
+  * 算法可扩展 :: 支持自定义Provider
+
+* Security Provider
+  ~java.security.Provider~ 是java平台的安全封装，提供了Provider的名称和实现的安全服务。当多个Provders同时配置时，并依序排列，服务请求时，最高优先级的将被选择。
