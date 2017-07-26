@@ -12,3 +12,92 @@
 
 * Security Provider
   ~java.security.Provider~ 是java平台的安全封装，提供了Provider的名称和实现的安全服务。当多个Provders同时配置时，并依序排列，服务请求时，最高优先级的将被选择。
+  Privoder配置路劲：JRE_HOME/lib/security/java.security
+
+* Cryptography(JCA)
+   
+   engine class负责定位Provider的SPI(Service Provider Interface抽象类)的实现。
+对于每一个engine class都有一个SPI抽象类，抽象类名称为engine class的名称加“SPI”，
+Provider必须继承该抽象类。
+
+   Providers: [[https://docs.oracle.com/javase/8/docs/technotes/guides/security/SunProviders.html][SunProviders]]
+** JCA 概念
+   
+  engine class:
+   + SecureRandom :: 生成随机数和伪随机数
+   + MessageDigest :: 计算HASH
+   + Signature :: 使用密钥初始化，签名数据和验证数字签名
+   + Cipher :: 使用密钥初始化， 加解密数据
+   + Message Authentication Codes(MAC) :: 同MessageDigest,但需要密钥
+   + KeyFactory :: 将现有不透明Key转换为规范密钥。
+   + SecreKeyFactory :: 将现有不透明SecreKey转换为规范密钥
+   + KeyPairGenerator :: 生成公钥和私钥
+   + KeyGenerator :: 生成新的密钥
+   + KeyAgreement :: 从两个或多个部分协商并建立一个特殊的密钥，用于特定的加密操作
+   + AlgorithmParameters :: 保存特定算法的参数，包括参数的编码和解码
+   + AlgorithmParameterGenerator :: 生成一个AlgorithmParameters集合
+   + KeyStore :: 创建和管理Keystore
+   + CertificateFactory :: 创建公钥证书和证书销毁列表（CRL）
+   + CertPathBuilder :: 建立证书链（证明路径）
+   + CertPathValidator :: 验证证书链
+   + CertStore :: 从库里获取证书和CRL 
+ 
+** CSP -- Cryptographic Service Provider
+   java.security.Provider是所有安全服务提供者的基类。
+** Message digest algorithms(消息摘要算法, hash)
+   MD5, SHA-1, SHA-256
+** Digital signature algorithms(电子签名算法)
+   RSA, DSA, ECDSA
+** Symmetric bulk encryption(对称块加密)
+   DES,AES，DESede, Blowfish, IDEA
+** Symmetric stream encryption(对称流加密)
+   ARCFOUR(RC4)
+** Asymmetric encryption（非对称加密）
+
+** Password-based encryption(PBE 密码加密)
+
+** Elliptic Curve Cryptography(ECC 椭圆曲线加密)
+
+** Key agreement algorithms（密钥协商算法）
+Diffie-Hellman ECDH 
+** Key generators
+
+** Message Authentication Codes(MACs 消息认证码)
+
+** （Pseudo-）random number generators
+
+* Public Key Infrastructure (PKI)
+  PKI是基于公钥加密的信息安全交换框架,数字证书绑定，提供多种方式鉴定证书真伪。
+包含密钥，证书，公钥加密和可信认证中心。
+java平台API支持X.509数字证书和证书吊销列表(CRL)
+
+* 密钥与证书存储 
+  + java.security.KeyStore :: 保存密钥和可信证书
+  + java.security.CertStore :: 保存不可信证书和CRL
+ 
+  KeyStore和CertStore实现类型：
+  * PKCS11和PKCS12
+  * JKS(文件类型)
+  * DKS(Domain key Store)
+  * LDAP 证书存储
+
+    java内置了一个JKS，*cacerts*包含许多可信CA
+    SunPKCS11 provider包含了PKCS11 KeyStore实现，这意味安全硬件中的密钥和证书可通过keystore API
+  读取和使用。
+       
+* 安全连接
+
+** SSL/TLS(Java Secure Socket Extension,JSSE)
+   支持的协议：
+   + SSLv3
+   + TLSv1
+   + TLSv1.1
+   + TLSv1.2
+
+** SASL(Simple Authentication and Security Layer )
+   The Java platform includes a built-in provider that implements the following SASL mechanisms:
+
+   + CRAM-MD5, DIGEST-MD5, EXTERNAL, GSSAPI, NTLM, and PLAIN client mechanisms
+   + CRAM-MD5, DIGEST-MD5, GSSAPI, and NTLM server mechanisms
+
+** GSS-API, Kerberos (Java Generic Security Services (JGSS))
