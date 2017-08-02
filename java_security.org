@@ -23,7 +23,7 @@ Provider必须继承该抽象类。
    Providers: [[https://docs.oracle.com/javase/8/docs/technotes/guides/security/SunProviders.html][SunProviders]]
 ** JCA 概念
    
-  engine class:
+*** engine class:
    + SecureRandom :: 生成随机数和伪随机数
    + MessageDigest :: 计算HASH
    + Signature :: 使用密钥初始化，签名数据和验证数字签名
@@ -41,7 +41,8 @@ Provider必须继承该抽象类。
    + CertPathBuilder :: 建立证书链（证明路径）
    + CertPathValidator :: 验证证书链
    + CertStore :: 从库里获取证书和CRL 
- 
+*** Provider class 
+    Provider是指实现JDK安全API加密功能子集的具体实现软件包。Provider class是这些包的接口，提供名称，版本号，和其他信息。
 ** CSP -- Cryptographic Service Provider
    java.security.Provider是所有安全服务提供者的基类。
 ** Message digest algorithms(消息摘要算法, hash)
