@@ -43,6 +43,65 @@ Provider必须继承该抽象类。
    + CertStore :: 从库里获取证书和CRL 
 *** Provider class 
     Provider是指实现JDK安全API加密功能子集的具体实现软件包。Provider class是这些包的接口，提供名称，版本号，和其他信息。
+**** Provider class 安装路径
+    + java classpath
+    + 扩展文件夹
+      * Solaris, Linux, or Mac OS X: <java-home>/lib/ext
+      * Windows: <java-home>\lib\ext
+**** 注册
+     * Solaris, Linux, or Mac OS X: <java-home>/lib/security/java.security
+     * Windows: <java-home>\lib\security\java.security
+*** Security class
+    Security管理Providers和安全相关的配置。
+#+BEGIN_EXAMPLE
+
+               |SecureRandom| nextInt/nextBytes   
+    |seed|---->|(SHA1RPNG)  |------------------>|data| 
+#+END_EXAMPLE
+**** 查询Providers
+     + static Provider[] getProviders()
+     + static Provider getProvider(String providerName)
+**** 增加Providers
+     + static int addProvider(Provider provider)
+     + static int insertProviderAt(Provider provider, int position)
+**** 删除Providers
+     + static void removeProvider(String name)
+**** Security Properties
+     + static String getProperty(String key)
+     + static void setProperty(String key, String datum)
+*** SecureRandom class
+    安全的随机数生成器，用于产生加密key, 参数。
+**** 创建SecureRandom
+     + new SecureRandom()
+     + SecureRandom.getInstance()
+     + getInstanceStrong() :: java.security.Security中的securerandom.strongAlgorithms定义的实现
+**** 方法
+     + synchronized public void setSeed(byte[] seed)
+     + public void setSeed(long seed)
+     + synchronized public void nextBytes(byte[] bytes)
+     + byte[] generateSeed(int numBytes)
+*** MessageDigest class
+          update()  |MessageDigest|  digest()
+    |Data|--------->|  (md5)      |------------|Digest/Hash|
+*** Signature Class
+#+BEGIN_EXAMPLE
+
+                        |Private key/Public key|
+                                   |
+                         |----------------------------------------|
+           update()|  Signature |sign() |signature|verify()|  Signature |
+     |Data|------->|(MD5withRSA)|------>|  Bytes  |--------|(MD5withRSA)|-->Yes/No
+        |          |    sign    |                       |  |    verify  |           
+        |______________________________update()_________|
+#+END_EXAMPLE
+
+签名算法用任意大小的输入和私钥产生称为签名的相对短的（或固定大小）的字节字符串。，
+**** Signature 对象状态
+     + UNINITIALIED
+     + SIGN
+     + VERIFY
+当对象创建时，Signature对象是UNINITIALIED,Signature类的两个初始函数initSign和initVerify,将对象转换为SING和VERIFY 。
+
 ** CSP -- Cryptographic Service Provider
    java.security.Provider是所有安全服务提供者的基类。
 ** Message digest algorithms(消息摘要算法, hash)
