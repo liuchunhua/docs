@@ -68,7 +68,7 @@ Provider必须继承该抽象类。
      + static void removeProvider(String name)
 **** Security Properties
      + static String getProperty(String key)
-     + static void setProperty(String key, String datum)
+     + static void setProperty(String key, javascript void 0String datum)
 *** SecureRandom class
     安全的随机数生成器，用于产生加密key, 参数。
 **** 创建SecureRandom
@@ -102,6 +102,28 @@ Provider必须继承该抽象类。
      + VERIFY
 当对象创建时，Signature对象是UNINITIALIED,Signature类的两个初始函数initSign和initVerify,将对象转换为SING和VERIFY 。
 
+*** Cipher class
+    提供加密和解密功能。
+#+BEGIN_EXAMPLE
+                                    |Secure Key|
+                                         |
+                 |--------------------------------------------------|
+            update    |Cipher|-->|AlgorithmParameters|----------------->|Cipher|
+            doFinal() | AES  |                          update/doFinal  | AES  |
+|plaintext|---------->|Encrpt|--->ciphertext--------------------------->|Decrpt|-->plaintext
+#+END_EXAMPLE
+**** 对称、非对称加密 
+     加密有两种主要的类型：symmetric(secure key)和asymmetric(public key cryptography)。
+非对称加密一般比对称慢，不适合加密大量数据，非对称可以用来加密secure key.
+**** stream vs block
+     块加密一次处理一块数据，一般为bytes数组，最后一块数据不满需要填充。在解密时需要将填充字节去掉。填充可以由程序处理也可以
+在初始化Cipher时指定填充类型如“PKCS5PADDING”.流加密一次处理一个字节或比特，不需要填充。
+小块加密，相同的文本块的密文也是相同的。如果有相同的加密块，增加了被破译的风险。为了增加文本的复杂度，feedback mode使用前块的输出改变
+当前输入块。第一个块需要一个初始值，也被称为初始向量（IV）。
+CBC (Cipher Block Chaining), CFB (Cipher Feedback Mode),  OFB (Output Feedback Mode). ECB (Electronic Cookbook Mode) is a mode with no feedback.
+AES和RSA允许KEU是不定长的，DES和3DES是定长的。
+大多数算法使用二进制key,因为不容易记忆。使用“Password based Encrption”PBE产生强二进制KEY。
+新型的加密模式例如Authenticated Encrption with Associated Data(AEAD)加密数据同时验证结果信息。
 ** CSP -- Cryptographic Service Provider
    java.security.Provider是所有安全服务提供者的基类。
 ** Message digest algorithms(消息摘要算法, hash)
