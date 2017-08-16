@@ -124,6 +124,17 @@ CBC (Cipher Block Chaining), CFB (Cipher Feedback Mode),  OFB (Output Feedback M
 AES和RSA允许KEU是不定长的，DES和3DES是定长的。
 大多数算法使用二进制key,因为不容易记忆。使用“Password based Encrption”PBE产生强二进制KEY。
 新型的加密模式例如Authenticated Encrption with Associated Data(AEAD)加密数据同时验证结果信息。
+**** 创建Cipher对象
+Cipher使用静态方法getInstance()创建，参数不是算法名，而是transformation,形式有：
++ “algorithm/mode/padding” :: ""DES/CBC/PKCS5Padding""
++ “algorithm”
+**** Cipher对象初始化
+首先需制定操作模式：
++ ENCRYPT_MODE
++ DECRYPT_MODE
++ WRAP_MODE :: 将java.security.key包装成bytes数组
++ UNWRAP_MODE :: bytes --> Key
+其他还需要KEY， Certificate, algorithm param, random.
 ** CSP -- Cryptographic Service Provider
    java.security.Provider是所有安全服务提供者的基类。
 ** Message digest algorithms(消息摘要算法, hash)
