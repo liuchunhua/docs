@@ -1,0 +1,11 @@
+* VSCode使用msys/git源代码管理无法展示（there is no active source control providers） 
+修改 "git.path"为"H:\\msys64\\usr\\lib\\git-core\\git.exe",
+修改VSCode\resources\app\extensions\git\git.js
+#+BEGIN_SRC javascript
+  getRepositoryRoot(repositoryPath) {
+      return __awaiter(this, void 0, void 0, function* () {
+          const result = yield this.exec(repositoryPath, ['rev-parse', '--show-toplevel']);
+          return path.normalize(result.stdout.trim().replace(/\/(.)/, '$1:').replace(/\//g, path.sep));
+      });
+  }
+#+END_SRC
