@@ -1,0 +1,73 @@
+* Emacs Version Control 乱码问题解决
+由于SVN是基于GBK编码的，与Emacs的设置的UTF-8编码不符，造成查看日志乱码和提交日志乱码
+** 查看日志解决办法
+使用(coding-system-for-read 'gbk)函数解决, 修改vc.el
+#+BEGIN_SRC lisp
+(defun vc-print-log-internal (backend files working-revision
+                                      &optional is-start-revision limit)
+  "For specified BACKEND and FILES, show the VC log.
+Leave point at WORKING-REVISION, if it is non-nil.
+If IS-START-REVISION is non-nil, start the log from WORKING-REVISION
+\(not all backends support this); i.e., show only WORKING-REVISION and
+earlier revisions.  Show up to LIMIT entries (non-nil means unlimited)."
+  ;; As of 2013/04 the only thing that passes IS-START-REVISION non-nil
+  ;; is vc-annotate-show-log-revision-at-line, which sets LIMIT = 1.
+
+  ;; Don't switch to the output buffer before running the command,
+  ;; so that any buffer-local settings in the vc-controlled
+  ;; buffer can be accessed by the command.
+  (let* ((dir-present (cl-some #'file-directory-p files))
+         (shortlog (not (null (memq (if dir-present 'directory 'file)
+                                    vc-log-short-style))))
+         (buffer-name "*vc-change-log*")
+         (type (if shortlog 'short 'long))
+         (coding-system-for-read 'gbk)) ;; 读取的是GBK编码
+      (vc-log-internal-common
+       backend buffer-name files type
+       (lambda (bk buf _type-arg files-arg)
+	 (vc-call-backend bk 'print-log files-arg buf shortlog
+                          (when is-start-revision working-revision) limit))
+       (lambda (_bk _files-arg ret)
+	 (vc-print-log-setup-buttons working-revision
+				     is-start-revision limit ret))
+       ;; When it's nil, point really shouldn't move (bug#15322).
+       (when working-revision
+         (lambda (bk)
+           (vc-call-backend bk 'show-log-entry working-revision)))
+       (lambda (_ignore-auto _noconfirm)
+	 (vc-print-log-internal backend files working-revision
+                              is-start-revision limit)))))
+#+END_SRC
+
+** 提交日志乱码解决办法
+"svn commit"参数中有“--encoding”一项，表示提交日志的编码。修改vc-svn.el
+#+BEGIN_SRC lisp
+(defun vc-svn-checkin (files comment &optional _extra-args-ignored)
+  "SVN-specific version of `vc-backend-checkin'."
+  (let ((status (apply
+                 'vc-svn-command nil 1 files "ci"
+                 (nconc (cons "-m" (log-edit-extract-headers nil comment))
+                        (list "--encoding" "utf-8") ;;增加编码参数
+                        (vc-switches 'SVN 'checkin)))))
+    (set-buffer "*vc*")
+    (goto-char (point-min))
+    (unless (equal status 0)
+      ;; Check checkin problem.
+      (cond
+       ((search-forward "Transaction is out of date" nil t)
+        (mapc (lambda (file) (vc-file-setprop file 'vc-state 'needs-merge))
+	      files)
+        (error (substitute-command-keys
+                (concat "Up-to-date check failed: "
+                        "type \\[vc-next-action] to merge in changes"))))
+       (t
+        (pop-to-buffer (current-buffer))
+        (goto-char (point-min))
+        (shrink-window-if-larger-than-buffer)
+        (error "Check-in failed"))))
+    ;; Update file properties
+    ;; (vc-file-setprop
+    ;;  file 'vc-working-revision
+    ;;  (vc-parse-buffer "^\\(new\\|initial\\) revision: \\([0-9.]+\\)" 2))
+    ))
+#+END_SRC 
