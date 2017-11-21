@@ -79,9 +79,9 @@ jieba=#  select * from to_tsvector('jiebacfg', '李小福是创新办主任也�
  '专家':11 '主任':5 '也':6 '云计算':8 '创新':3 '办':4 '方面':9 '是':2,7 '李小福':1 '的':10
 (1 row)
 #+END_EXAMPLE
-** 创建用户
+** 创建用户角色
 #+BEGIN_EXAMPLE
-# 不能创建用户，数据库的普通数据库用户
+# 数据库的普通数据库用户
 createuser -A -D -e -E -P dbuser
 #+END_EXAMPLE
 ** msys2 emacs连接无密码提示解决方法
