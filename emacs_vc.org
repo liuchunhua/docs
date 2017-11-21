@@ -73,7 +73,7 @@ earlier revisions.  Show up to LIMIT entries (non-nil means unlimited)."
 #+END_SRC 
 * Version Control(msys/subversion 1.9.7)
 查看日志正常，但是日志提交乱码，文本以UTF-8编码被保存到subversion server中，添加--encoding也无用。
-使用encode-coding-string函数将文本转换为cp936编码
+在Windows环境变量中添加LANG=zh_CN.UTF-8, 使用encode-coding-string函数将文本转换为cp936编码
 #+BEGIN_SRC lisp
 (defun vc-svn-checkin (files comment &optional _extra-args-ignored)
   "SVN-specific version of `vc-backend-checkin'."
