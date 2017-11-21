@@ -1,4 +1,4 @@
-* Emacs Version Control 乱码问题解决
+* Emacs Version Control(windows subversion 1.8) 乱码问题解决
 由于SVN是基于GBK编码的，与Emacs的设置的UTF-8编码不符，造成查看日志乱码和提交日志乱码
 ** 查看日志解决办法
 使用(coding-system-for-read 'gbk)函数解决, 修改vc.el
@@ -71,3 +71,35 @@ earlier revisions.  Show up to LIMIT entries (non-nil means unlimited)."
     ;;  (vc-parse-buffer "^\\(new\\|initial\\) revision: \\([0-9.]+\\)" 2))
     ))
 #+END_SRC 
+* Version Control(msys/subversion 1.9.7)
+查看日志正常，但是日志提交乱码，文本以UTF-8编码被保存到subversion server中，添加--encoding也无用。
+使用encode-coding-string函数将文本转换为cp936编码
+#+BEGIN_SRC lisp
+(defun vc-svn-checkin (files comment &optional _extra-args-ignored)
+  "SVN-specific version of `vc-backend-checkin'."
+  (let ((status (apply
+                 'vc-svn-command nil 1 files "ci"
+                 (nconc (cons "-m" (log-edit-extract-headers nil (encode-coding-string comment 'cp936)))
+                        (vc-switches 'SVN 'checkin)))))
+    (set-buffer "*vc*")
+    (goto-char (point-min))
+    (unless (equal status 0)
+      ;; Check checkin problem.
+      (cond
+       ((search-forward "Transaction is out of date" nil t)
+        (mapc (lambda (file) (vc-file-setprop file 'vc-state 'needs-merge))
+	      files)
+        (error (substitute-command-keys
+                (concat "Up-to-date check failed: "
+                        "type \\[vc-next-action] to merge in changes"))))
+       (t
+        (pop-to-buffer (current-buffer))
+        (goto-char (point-min))
+        (shrink-window-if-larger-than-buffer)
+        (error "Check-in failed"))))
+    ;; Update file properties
+    ;; (vc-file-setprop
+    ;;  file 'vc-working-revision
+    ;;  (vc-parse-buffer "^\\(new\\|initial\\) revision: \\([0-9.]+\\)" 2))
+    ))
+#+END_SRC
