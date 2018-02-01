@@ -1,0 +1,23 @@
+* Shiro安全阅读笔记
+** 核心接口
+*** SecurityManager
+在单一程序中执行用户(Subject)所有的安全操作
+包含三个接口：
+  + Authonticator 验证接口
+  + Authorizer 授权接口
+  + SessionManager 会话接口
+SecurityManager自身功能包含创建Subject(createSubject), 登录(login), 登出(logout).
+
+*** SessionManager
+创建、维护、清理(没有相应函数?)所有的Session.
++ getSession(SessionKey key)
+获取Session,无则null
++ start(SessionContext context)
+通过SessionFacotry加context创建Session
+*** SessionContext
+包含Host,SessionId
+
+** 如何将Shiro集成到Resteasy的Netty容器中？
++ SessionContext何时创建、在哪里创建(when,where,how)
++ 能否通过IOC注入
++ 能否通过jax-rs的filter和interuptor实现。
