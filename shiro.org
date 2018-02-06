@@ -21,3 +21,20 @@ SecurityManager自身功能包含创建Subject(createSubject), 登录(login), �
 + SessionContext何时创建、在哪里创建(when,where,how)
 + 能否通过IOC注入
 + 能否通过jax-rs的filter和interuptor实现。
++ SecurityUtils将Subject绑定到线程中，不适合跨线程的Session
+
+** NettyJaxrsServer中的Pipeline
+HttpRequestDecoder => HttpChunkAggregator => RestEasyHttpRequestDecoder(单例) => RequestHandler => RestEasyHttpResponseEncoder(单例) => HttpResponseEncoder
+
+** RequestHandler处理流程
++ RequestDispatcher.service(ChannleHandlerContext, NettyHttpRequest, NettyHttpResponse, boolean)
+首先将ResteasyProviderFactory放入ThreadLocal中， 创建SecurityContext并放入ThreadLocal的Map中，同时将
+ChannleHandlerContext放入ThreadLocal.
++ SynchronousDispatcher.invoke(HttpRequest, HttpResponse)
+  SynchronousDispatcher在ResteayDeployment中创建，有同步和异步两种， 异步继承了同步类。
++ 同步流程
+首先将request, response放入ResteasyProviderFactory中的ThreadLocal，然后调用预处理ContainerRequestFilter(preprocess), 封装ResourceInvoker, 迭代执行HttpRequestProcessor, 处理request, 然后执行(PreMatchContainerRequestContext.filter())@prematch的ContainerRequestFilter, 最后调用ResourceInvoker.invoke() 
++ 异步流程
+AsynchronousDispatcher重写了invoke(HttpRequest in, HttpResponse response, ResourceInvoker invoker)，如果查询参数（QueryParam）中包含"asynch", 异步调用(submit), response设置http返回码202，header中添加Location:"/asynch/jobs" 如果查询参数中包含“oneway”, 异步调用(execute), response设置http返回码202。
++ response处理流程
+  ResourceInvoker.invoke()返回Response, 调用SynchronousDispatcher.writeResponse, 使用ServerResponseWriter.writeNomapResponse(static方法)
