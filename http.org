@@ -1,0 +1,35 @@
+Vary: 通知客服端服务器内容协商的结果，值为请求头，如Accept-Encoding.
+* Web 缓存
+** 过期缓存
+Expires: http1.0, 过期时间，依赖客户端时间，有时间同步问题。Pragma:no-cache不缓存。
+Cache-Control: http1.1， max-age,单位秒，相对时间。no-cache不缓存。
+
+Date头表示服务器生产相应的时间,Age头表示缓存(如CDN)在多久之间从源服务器上获取的。
+
+* 条件请求
+** 如何生成Last-Modified和ETag响应头
+   服务器通过Last-Modified和ETag响应头来驱动条件请求。客户端使用If-Modified-Since和If-None-Match来校验缓存中的表述。
+使用If-Unmodified-Since和If-Match作为并发控制的先决条件。
+
+Last-Modified是弱验证，ETag是强验证。
+Last-Modified可以是最新的修改时间，ETag可以使用资源相应的哈希值，如MD5
+
+** 如何在服务端实现条件GET请求
+   如果客户端发送If-None-Match头，那就将它与服务器的ETag值做比较。如果客户端发送If-Unmodified-Since头，那就将它与服务器表述的最后修改时间做比较。
+如果上述两个比较的结果都为假，或着客户端并未发送这两个标头，那就向客户端返回表述的最新副本，并包含新的Etag和Last-Modified头，否则就返回HTTP状态吗304(Not Modified)
+
+** 如何在客户端提交GET和HEAD请求
+   当服务器返回Last-Modified头和Etag头时，将它们连同数据一起存储，再次请求时，将If-Modified-Since头设为Last-Modified的值，If-None-Match头设为ETag头的值。
+** 如何在服务端实现条件PUT请求
+   PUT主要用来修改资源，必须提供Last-Modified和ETag的值,如果匹配才允许修改，如果不包含If-Unmodified-Since头和If-Match头,返回状态码403（Forbidden）,如果不匹配返回412（Precondition Failed）
+** 如何在服务器端实现条件DELETE请求
+   同PUT，防止客户端基于过时的信息删除资源。
+** 如何从客户端发起无条件GET请求
+主要用来在收到412返回码后，获得最新的资源表述。在GET请求中包含Cache-Control: no-cache已及Pragma: no-cache头。
+** 如何在客户端提交条件PUT和DELETE请求
+   如果客户端有来自先前请求的If-Modified和ETag的值,那么就在PUT和DELETE请求的同时，包含If-Unmodified-Since头和If-Match头,如果收到412就发起一个无条件GET请求，获得最新的If-Modified和ETag值，
+然后使用最新的值发起PUT和DELETE请求。
+** 如何使POST请求条件化并不可重复
+   让客户端使用一次性的URI，服务器为每个POST请求提供了一个链接。URI中包含一个由服务器生成的令牌，只能用于一次POST请求，同时需要用过的令牌保存在服务器事务日志中。
+** 如何生成一次性URI
+   如果URI用于创建新资源，那就基于一个序列或一个时间戳和随机数的合并字符串生成令牌。如果用于一个或多个资源，那就在令牌中包含哪些资源的实体标签和标识符
