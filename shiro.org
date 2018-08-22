@@ -8,6 +8,15 @@
   + SessionManager 会话接口
 SecurityManager自身功能包含创建Subject(createSubject), 登录(login), 登出(logout).
 
+*** Session
+    + getId
+    + getStartTimestamp
+    + getLastAccessTime
+    + getTimeout
+    + setTimeout
+    + getHost
+    + touch 更新LastAccessTime
+    + stop
 *** SessionManager
 创建、维护、清理(没有相应函数?)所有的Session.
 + getSession(SessionKey key)
@@ -16,6 +25,10 @@ SecurityManager自身功能包含创建Subject(createSubject), 登录(login), �
 通过SessionFacotry加context创建Session
 *** SessionContext
 包含Host,SessionId
+*** Subject
+    表示用户及其权限
+*** Subject.Builder
+    
 
 ** 如何将Shiro集成到Resteasy的Netty容器中？
 + SessionContext何时创建、在哪里创建(when,where,how)
@@ -23,6 +36,7 @@ SecurityManager自身功能包含创建Subject(createSubject), 登录(login), �
 + 能否通过jax-rs的filter和interuptor实现。
 + SecurityUtils将Subject绑定到线程中，不适合跨线程的Session
 
+* Resteasy
 ** NettyJaxrsServer中的Pipeline
 HttpRequestDecoder => HttpChunkAggregator => RestEasyHttpRequestDecoder(单例) => RequestHandler => RestEasyHttpResponseEncoder(单例) => HttpResponseEncoder
 

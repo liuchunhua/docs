@@ -169,15 +169,49 @@ java平台API支持X.509数字证书和证书吊销列表(CRL)
   + java.security.CertStore :: 保存不可信证书和CRL
  
   KeyStore和CertStore实现类型：
-  * PKCS11和PKCS12
-  * JKS(文件类型)
-  * DKS(Domain key Store)
+  * PKCS11和PKCS12(推荐) 跨平台， RSA PKCS12
+  * JKS(JDK默认)
+  * jceks Password-Based Encrption with Triple-DES
+  * DKS(Domain keyStore)
   * LDAP 证书存储
 
     java内置了一个JKS，*cacerts*包含许多可信CA
     SunPKCS11 provider包含了PKCS11 KeyStore实现，这意味安全硬件中的密钥和证书可通过keystore API
   读取和使用。
        
+  + KeyStore Class
+    该类是内存中密钥和证书的一个集合，包含两类Entry:
+    * Key 包换敏感的密钥，私钥信息，以一种受保护的格式存储。
+    * 可信证书
+    Entry使用"alias"别名标识。
+    
+    创建方法：使用getInstance方法创建，然后load实际keystore数据进内存。
+    
+    判断Entry类型： isKeyEntry isCertificateEntry
+    
+    添加证书 setCertificateEntry(alias, cert)
+
+    添加密钥： setKeyEntry(alias, key, password, chain)
+
+#+BEGIN_SRC java
+  KeyStore store = KeyStore.getInstance("PKCS12");
+  InputStream stream = getClass().getResourceAsStream("/keystore/lch.keystore");
+  store.load(stream, "123456".toCharArray());
+  Certificate cert = store.getCertificate("lch");
+  System.out.println(Base64.encodeBytes(cert.getEncoded()));
+  Key key = store.getKey("lch", "123456".toCharArray());
+  System.out.println(Base64.encodeBytes(key.getEncoded()));
+
+#+END_SRC
+#+BEGIN_SRC java
+  KeyStore store = KeyStore.getInstance("PKCS12");
+  InputStream stream = getClass().getResourceAsStream("/keystore/lch.keystore");
+  store.load(stream, "123456".toCharArray());
+  Certificate cert = store.getCertificate("lch");
+  System.out.println(Base64.encodeBytes(cert.getEncoded()));
+  Key key = store.getKey("lch", "123456".toCharArray());
+  System.out.println(Base64.encodeBytes(key.getEncoded()));
+#+END_SRC 
 * 安全连接
 
 ** SSL/TLS(Java Secure Socket Extension,JSSE)

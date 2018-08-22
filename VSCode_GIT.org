@@ -8,4 +8,7 @@
           return path.normalize(result.stdout.trim().replace(/\/(.)/, '$1:').replace(/\//g, path.sep));
       });
   }
+
+const res2 = yield this.run(['rev-parse', '--symbolic-full-name', name + '@\\{u\\}']);
 #+END_SRC
+

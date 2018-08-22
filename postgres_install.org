@@ -82,7 +82,10 @@ jieba=#  select * from to_tsvector('jiebacfg', '李小福是创新办主任也�
 ** 创建用户角色
 #+BEGIN_EXAMPLE
 # 数据库的普通数据库用户
-createuser -A -D -e -E -P dbuser
+# 
+createuser -e -P dbuser
+# 创建用户的schema
+create schema dbuser AUTHORIZATION dbuser
 #+END_EXAMPLE
 ** msys2 emacs连接无密码提示解决方法
    修改%APPDATA%\postgresql\pgpass.conf添加hostname:port:database:username:password
